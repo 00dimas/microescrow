@@ -2,7 +2,7 @@
 
 Smart contract escrow sederhana untuk pembayaran freelance — bukan token spekulatif.
 
-> Status: **Blueprint** — belum ada kode.
+> Status: **M0–M4 selesai untuk testnet** — belum diaudit independen dan tidak untuk mainnet.
 
 ## Ringkasan
 
@@ -45,6 +45,50 @@ Client (deposit) → Escrow Contract (lock funds, track milestone)
 | M2 | Dispute flow + arbitrator role |
 | M3 | Frontend integrasi wallet (connect, deposit, approve) |
 | M4 | Audit checklist + test coverage lengkap |
+
+## Menjalankan proyek
+
+Prasyarat: Node.js 20+ dan wallet khusus testnet.
+
+```bash
+npm install
+npm test
+npm run coverage
+
+cp frontend/.env.example frontend/.env.local
+npm --prefix frontend install
+npm run frontend:dev
+```
+
+Frontend membaca alamat kontrak dari `NEXT_PUBLIC_ESCROW_ADDRESS`. Wallet harus berada di
+Sepolia. UI menyediakan connect wallet, ringkasan escrow, deposit oleh client, dan approval
+milestone yang sudah disubmit.
+
+## Deploy ke Sepolia
+
+Salin `.env.example` menjadi `.env`, isi RPC dan private key **wallet testnet khusus**. Jangan
+gunakan key yang memegang aset mainnet.
+
+```bash
+npm run compile
+npm run deploy:sepolia -- \
+  --parameters ignition/parameters.example.json
+```
+
+Sesuaikan alamat pihak serta nilai milestone (wei) di file parameter sebelum deploy. Setelah
+deploy, masukkan alamat kontrak ke `frontend/.env.local`.
+
+## Alur kontrak
+
+1. Client deploy kontrak dengan freelancer, arbitrator, dan daftar nilai milestone.
+2. Client memanggil `fund()` dengan ETH tepat sebesar total seluruh milestone.
+3. Freelancer mengirim hash deliverable melalui `submitWork()`.
+4. Client memanggil `approveMilestone()` untuk mencairkan milestone, atau salah satu pihak
+   membuka dispute melalui `raiseDispute()`.
+5. Arbitrator membagi nilai milestone disputed melalui `resolveDispute()`.
+
+Lihat [checklist audit](docs/AUDIT_CHECKLIST.md) untuk kontrol yang sudah diuji dan risiko yang
+masih diketahui.
 
 ## Catatan
 

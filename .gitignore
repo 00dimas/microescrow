@@ -1,0 +1,13 @@
+node_modules/
+.hardhat-local/
+frontend/node_modules/
+artifacts/
+cache/
+coverage/
+coverage.json
+typechain-types/
+ignition/deployments/
+frontend/.next/
+.env
+frontend/.env.local
+*.log
