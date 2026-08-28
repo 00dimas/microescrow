@@ -1,73 +1,93 @@
 # MicroEscrow
 
-Smart contract escrow sederhana untuk pembayaran freelance — bukan token spekulatif.
+A smart contract escrow for freelance payments — not a speculative token.
 
-> Status: **M0–M4 selesai untuk testnet** — belum diaudit independen dan tidak untuk mainnet.
+> Testnet only. Not independently audited — do not deploy to mainnet with real funds.
 
-## Ringkasan
+## What it does
 
-Escrow contract yang mengunci dana dari client, lalu merilisnya ke freelancer berdasarkan
-milestone yang disetujui — atau lewat arbitrase kalau ada dispute. Fokus ke use case pembayaran
-nyata, bukan proyek token/koin.
+An escrow contract that locks funds deposited by a client and releases them to a freelancer
+as milestones are approved, or splits them through arbitration if a dispute is raised. It's
+built for real payment use cases, not a coin/token launch.
 
-## Fitur utama
+- **Deposit & lock** — the client deposits funds once; they are locked in the contract.
+- **Milestone-based release** — payment is released incrementally as each milestone is approved.
+- **Dispute flow** — a dedicated arbitrator role resolves disputes between client and freelancer.
+- **On-chain event log** — every action (deposit, release, dispute) is recorded on-chain for transparency.
+- **Simple frontend** — client and freelancer can connect a wallet and see escrow status.
 
-- **Deposit & lock**: client deposit dana, dana terkunci di contract
-- **Milestone-based release**: pembayaran dicairkan bertahap sesuai milestone yang di-approve
-- **Dispute flow**: role arbitrator buat resolve sengketa antara client dan freelancer
-- **Event log**: semua aksi (deposit, release, dispute) tercatat on-chain buat transparency
-- **Frontend sederhana**: client & freelancer bisa connect wallet dan lihat status escrow
+## Architecture
 
-## Arsitektur
-
-```
-Client (deposit) → Escrow Contract (lock funds, track milestone)
-  → Freelancer (submit deliverable) → Client approve / Arbitrator resolve
-  → Release funds
+```text
+Client (deposit) → Escrow Contract (lock funds, track milestones)
+  → Freelancer (submit deliverable) → Client approves / Arbitrator resolves
+  → Funds released
 ```
 
-## Stack (free-tier)
+## Stack
 
-| Layer | Komponen |
+| Layer | Component |
 |---|---|
-| Bahasa | Solidity |
-| Framework | Foundry / Hardhat |
-| Testnet | Sepolia (faucet gratis) |
+| Language | Solidity |
+| Framework | Hardhat |
+| Testnet | Sepolia (free faucet) |
 | Frontend | Next.js + wagmi/viem |
 | Wallet | MetaMask |
 
-## Roadmap
+## Contract flow
 
-| # | Milestone |
-|---|---|
-| M0 | Contract dasar: deposit + release manual |
-| M1 | Milestone-based partial release |
-| M2 | Dispute flow + arbitrator role |
-| M3 | Frontend integrasi wallet (connect, deposit, approve) |
-| M4 | Audit checklist + test coverage lengkap |
+1. The client deploys the contract with the freelancer, arbitrator, and milestone values.
+2. The client calls `fund()` with ETH exactly equal to the sum of all milestones.
+3. The freelancer submits a deliverable hash via `submitWork()`.
+4. The client calls `approveMilestone()` to release that milestone, or either party can open a
+   dispute via `raiseDispute()`.
+5. The arbitrator splits the disputed milestone's value via `resolveDispute()`.
 
-## Menjalankan proyek
+## Security
 
-Prasyarat: Node.js 20+ dan wallet khusus testnet.
+- Client, freelancer, and arbitrator permissions are checked on every fund-related mutation.
+- Release and dispute resolution follow the checks-effects-interactions pattern.
+- Every transfer path is protected by `nonReentrant`.
+- Deposits are one-shot, from the client only, and must exactly match the milestone total.
+- Direct ETH transfers via `receive`/`fallback` are rejected.
+- Milestone values must be non-zero; party addresses must be non-zero, distinct, and not the client.
+- State transitions prevent double release and double resolution.
+- An arbitrator's award can never exceed a milestone's value.
+- Unit tests cover the happy path, access control, invalid input, and invalid transitions.
+
+Known limitations: there's no timeout, so funds can be stuck if a party or the arbitrator goes
+unresponsive; the arbitrator is a single trusted role; deliverables are represented only as a
+hash, with content storage/verification handled off-chain; and there's no sweep function, so
+forced ETH sent to the contract by other means cannot be withdrawn by any privileged party.
+Independent audit, external fuzz/invariant testing, and static analysis (e.g. Slither) have not
+been done — see `docs/AUDIT_CHECKLIST.md` for the full internal checklist.
+
+## Replicating this project
+
+Requirements: Node.js 20+, and a wallet dedicated to testnet use only.
 
 ```bash
 npm install
 npm test
 npm run coverage
+```
 
+### Running the frontend
+
+```bash
 cp frontend/.env.example frontend/.env.local
 npm --prefix frontend install
 npm run frontend:dev
 ```
 
-Frontend membaca alamat kontrak dari `NEXT_PUBLIC_ESCROW_ADDRESS`. Wallet harus berada di
-Sepolia. UI menyediakan connect wallet, ringkasan escrow, deposit oleh client, dan approval
-milestone yang sudah disubmit.
+The frontend reads the contract address from `NEXT_PUBLIC_ESCROW_ADDRESS`. The wallet must be
+on Sepolia. The UI supports connecting a wallet, viewing escrow status, depositing as the
+client, and approving submitted milestones.
 
-## Deploy ke Sepolia
+### Deploying to Sepolia
 
-Salin `.env.example` menjadi `.env`, isi RPC dan private key **wallet testnet khusus**. Jangan
-gunakan key yang memegang aset mainnet.
+Copy `.env.example` to `.env` and fill in an RPC URL and the private key of a **dedicated
+testnet wallet** — never a key that holds mainnet assets.
 
 ```bash
 npm run compile
@@ -75,23 +95,5 @@ npm run deploy:sepolia -- \
   --parameters ignition/parameters.example.json
 ```
 
-Sesuaikan alamat pihak serta nilai milestone (wei) di file parameter sebelum deploy. Setelah
-deploy, masukkan alamat kontrak ke `frontend/.env.local`.
-
-## Alur kontrak
-
-1. Client deploy kontrak dengan freelancer, arbitrator, dan daftar nilai milestone.
-2. Client memanggil `fund()` dengan ETH tepat sebesar total seluruh milestone.
-3. Freelancer mengirim hash deliverable melalui `submitWork()`.
-4. Client memanggil `approveMilestone()` untuk mencairkan milestone, atau salah satu pihak
-   membuka dispute melalui `raiseDispute()`.
-5. Arbitrator membagi nilai milestone disputed melalui `resolveDispute()`.
-
-Lihat [checklist audit](docs/AUDIT_CHECKLIST.md) untuk kontrol yang sudah diuji dan risiko yang
-masih diketahui.
-
-## Catatan
-
-Ini bukan proyek token spekulatif — fokusnya ke use case pembayaran nyata dan security dasar
-(reentrancy, access control). Selalu test di testnet; jangan pernah deploy ke mainnet dengan
-dana asli tanpa audit.
+Adjust the party addresses and milestone values (in wei) in the parameters file before
+deploying. After deployment, put the contract address into `frontend/.env.local`.
