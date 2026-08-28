@@ -4,9 +4,11 @@ Baca `README.md` dulu untuk konteks produk (fitur, arsitektur, stack, roadmap).
 
 ## Status saat ini
 
-Repo masih **kosong / tahap blueprint**. Kalau diminta "bantu bangun sistemnya" tanpa
-instruksi spesifik, mulai dari milestone paling awal yang belum selesai di tabel Roadmap
-README (urutan M0 → M4, jangan loncat).
+Semua milestone di tabel Roadmap README (M0–M4) sudah selesai untuk testnet — belum diaudit
+independen dan tidak untuk mainnet. Lihat `docs/AUDIT_CHECKLIST.md` untuk kontrol yang sudah
+diuji dan risiko yang masih terbuka (audit independen, fuzz/invariant test eksternal, Slither
+di CI). Kalau diminta "bantu bangun sistemnya" tanpa instruksi spesifik, tanya milestone/fitur
+baru apa yang dimaksud — jangan asumsikan mulai dari nol.
 
 ## Prinsip kerja
 
